@@ -26,7 +26,6 @@ This repository contains two core analysis notebooks focused on detecting buildi
 
 ## Outcomes
 - Successfully identified known confirmed leaks (e.g., Boyd Tower and South Wing).
-- Detected additional buildings likely involved, pending client validation.
 - Signature-based method offers higher interpretability and speed with current data.
 
 ## Future Work
