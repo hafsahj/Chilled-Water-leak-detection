@@ -1,8 +1,8 @@
 # Chilled Water Leak Detection
 
-Two independent approaches to spotting building-level contributors to chilled-water leaks from campus utility sensor data: unsupervised anomaly detection with an LSTM autoencoder, and a lighter-weight signal-based leak-signature scorer.
+Two approaches to spotting building-level contributors to chilled-water leaks from campus utility sensor data: unsupervised anomaly detection with an LSTM autoencoder, and a simpler signal-based leak-signature scorer.
 
-Originally built against a full year of real campus chilled-water data (six buildings' worth of Flow/DeltaT/StationCO meters, weather, and makeup-water flow at 2-hourly resolution). That data isn't shareable, so this repo ships with a synthetic dataset generator (`scripts/generate_demo_data.py`) that reproduces the same schema and injects one deliberate leak — everything in this repo is runnable end-to-end against it.
+This was originally built against a full year of real campus chilled-water data: six buildings' worth of Flow, DeltaT, and StationCO meters, plus weather and makeup-water flow, all at 2-hourly resolution. That data isn't shareable, so this repo ships with a synthetic dataset generator (`scripts/generate_demo_data.py`) that matches the same schema and injects one deliberate leak. Everything here runs end to end against it.
 
 ## Structure
 
@@ -24,17 +24,13 @@ Originally built against a full year of real campus chilled-water data (six buil
 └── README.md
 ```
 
-## Approach 1 — LSTM Autoencoder
+## Approach 1: LSTM Autoencoder
 
-- **Input:** 24-timestep (48h) windows of building-level features, 2-hourly resolution.
-- **Model:** two-layer LSTM encoder/decoder trained to reconstruct normal operating windows.
-- **Detection:** windows in the top percentile of reconstruction error are flagged anomalous; error is then attributed back to individual buildings and weighted into a `LeakScore` (see `src/scoring.py` for the rationale — elevated flow/conductivity with a *smaller* temperature differential is the leak signature).
+Takes 24-timestep (48h) windows of building-level features at 2-hourly resolution and feeds them into a two-layer LSTM encoder/decoder trained to reconstruct normal operating windows. Windows with the highest reconstruction error get flagged as anomalies, and that error gets attributed back to individual buildings to produce a `LeakScore` (see `src/scoring.py` for the reasoning: a leak tends to show up as higher flow and conductivity with a smaller temperature differential).
 
-## Approach 2 — Leak-Signature Scoring
+## Approach 2: Leak-Signature Scoring
 
-- **Signals:** Flow, DeltaT, StationCO, weather-adjusted (regressed on heat index, residuals used) to remove seasonal effects.
-- **Method:** rolling mean/std thresholding to flag spikes across Flow, DeltaT, and StationCO simultaneously, isolating the specific culprit building.
-- **Trade-off vs. Approach 1:** faster, more interpretable, no training required — at the cost of relying on hand-tuned thresholds rather than learned normal behavior.
+Weather-adjusts each building's Flow, DeltaT, and StationCO, then uses rolling mean/std thresholding to catch spikes across all three signals at once, pointing to the specific culprit building. It's faster and more interpretable than the autoencoder, no training needed, but it relies on hand-tuned thresholds instead of learned normal behavior.
 
 ## Setup
 
@@ -45,14 +41,14 @@ pip install -r requirements.txt
 python scripts/generate_demo_data.py
 ```
 
-Then run either notebook top to bottom. To use your own data instead, drop it into `data/` per the schema in `data/README.md`, or set `CW_DATA_DIR` to point elsewhere.
+Then run either notebook top to bottom. To use your own data instead, drop it into `data/` following the schema in `data/README.md`, or set `CW_DATA_DIR` to point elsewhere.
 
 ## Future Work
 
-- Extend signature analysis across full leak periods rather than just start days.
+- Extend signature analysis across full leak periods, not just start days.
 - Compare leak events across multiple years.
 - Integrate results into an interactive dashboard.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
