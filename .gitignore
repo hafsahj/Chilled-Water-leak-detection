@@ -1,0 +1,15 @@
+# Raw data — never commit real sensor data
+data/*.csv
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+*.egg-info/
+
+# Environments
+.venv/
+venv/
+
+# OS
+.DS_Store

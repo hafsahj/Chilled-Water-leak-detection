@@ -1,34 +1,59 @@
-# Chilled Water Leak Detection – UIowa
+# Chilled Water Leak Detection
 
-This repository contains two core analysis notebooks focused on detecting building-level contributors to chilled water leaks at the University of Iowa. The approaches are based on either anomaly detection using LSTM autoencoders or spike pattern detection via engineered leak signatures.
+Two independent approaches to spotting building-level contributors to chilled-water leaks from campus utility sensor data: unsupervised anomaly detection with an LSTM autoencoder, and a lighter-weight signal-based leak-signature scorer.
+
+Originally built against a full year of real campus chilled-water data (six buildings' worth of Flow/DeltaT/StationCO meters, weather, and makeup-water flow at 2-hourly resolution). That data isn't shareable, so this repo ships with a synthetic dataset generator (`scripts/generate_demo_data.py`) that reproduces the same schema and injects one deliberate leak — everything in this repo is runnable end-to-end against it.
 
 ## Structure
 
-- `CW_Approach_1_(LSTM_Autoencoder).ipynb`  
-  Deep learning–based approach using a sequence-to-sequence LSTM autoencoder. Trained to reconstruct normal behavior and flag anomalies via reconstruction error spikes.
+```
+├── src/
+│   ├── config.py       # paths, thresholds, known leak periods
+│   ├── data_utils.py   # loading, pivoting, merging raw CSVs
+│   ├── sequences.py    # windowing for the LSTM autoencoder
+│   ├── model.py         # LSTM autoencoder architecture
+│   └── scoring.py        # reconstruction-error and leak-signature scoring
+├── scripts/
+│   └── generate_demo_data.py   # synthetic dataset with an injected leak
+├── data/
+│   └── README.md         # expected input schema (real data not included)
+├── CW_Approach_1_(LSTM_Autoencoder).ipynb
+├── CW_Approach_2_(Moving_avgs).ipynb
+├── requirements.txt
+├── LICENSE
+└── README.md
+```
 
-- `CW_Approach_2_(Moving_avgs).ipynb`  
-  A signal-based method using rolling mean, standard deviation, and multi-signal leak signatures (Flow, DeltaT, StationCO) to detect potential culprits at the start of known leak periods.
+## Approach 1 — LSTM Autoencoder
 
-## Summary of Approaches
+- **Input:** 24-timestep (48h) windows of building-level features, 2-hourly resolution.
+- **Model:** two-layer LSTM encoder/decoder trained to reconstruct normal operating windows.
+- **Detection:** windows in the top percentile of reconstruction error are flagged anomalous; error is then attributed back to individual buildings and weighted into a `LeakScore` (see `src/scoring.py` for the rationale — elevated flow/conductivity with a *smaller* temperature differential is the leak signature).
 
-### 1. LSTM Autoencoder
-- **Input**: 24-timestep windows of 361 building-level features.
-- **Model**: Two-layer LSTM encoder and decoder.
-- **Output**: Reconstruction error used to detect abnormal system behavior.
-- **Purpose**: Learn normal operating patterns and highlight deviations.
+## Approach 2 — Leak-Signature Scoring
 
-### 2. Leak Signature Scoring
-- **Signals**: Flow, DeltaT, StationCO
-- **Method**: 7-period rolling mean and standard deviation thresholding.
-- **Logic**: Mark timestamp as a leak signature if all three signals spike together.
-- **Use**: Detect culprit buildings on the first day of known leak periods.
+- **Signals:** Flow, DeltaT, StationCO, weather-adjusted (regressed on heat index, residuals used) to remove seasonal effects.
+- **Method:** rolling mean/std thresholding, run twice — a broad first pass across each full known leak period, then a tighter second pass restricted to the confirmed leak start day to isolate the specific culprit meter(s).
+- **Trade-off vs. Approach 1:** faster, more interpretable, no training required — at the cost of relying on hand-tuned thresholds rather than learned normal behavior.
+- **On the demo data:** the broad first pass alone doesn't clear its threshold across the full leak period. The refined second pass, restricted to the leak's start day, correctly isolates the single building the leak was injected into — the two-pass design is what actually finds it.
 
-## Outcomes
-- Successfully identified known confirmed leaks (e.g., Boyd Tower and South Wing).
-- Signature-based method offers higher interpretability and speed with current data.
+## Setup
+
+```bash
+git clone https://github.com/hafsahj/<repo-name>.git
+cd <repo-name>
+pip install -r requirements.txt
+python scripts/generate_demo_data.py
+```
+
+Then run either notebook top to bottom. To use your own data instead, drop it into `data/` per the schema in `data/README.md`, or set `CW_DATA_DIR` to point elsewhere.
 
 ## Future Work
-- Extend signature analysis across full leak periods.
-- Compare leak events across 2022–2025.
-- Integrate results into an interactive Power BI dashboard.
+
+- Extend signature analysis across full leak periods rather than just start days.
+- Compare leak events across multiple years.
+- Integrate results into an interactive dashboard.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
