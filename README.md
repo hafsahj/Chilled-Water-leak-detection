@@ -33,9 +33,8 @@ Originally built against a full year of real campus chilled-water data (six buil
 ## Approach 2 — Leak-Signature Scoring
 
 - **Signals:** Flow, DeltaT, StationCO, weather-adjusted (regressed on heat index, residuals used) to remove seasonal effects.
-- **Method:** rolling mean/std thresholding, run twice — a broad first pass across each full known leak period, then a tighter second pass restricted to the confirmed leak start day to isolate the specific culprit meter(s).
+- **Method:** rolling mean/std thresholding to flag spikes across Flow, DeltaT, and StationCO simultaneously, isolating the specific culprit building.
 - **Trade-off vs. Approach 1:** faster, more interpretable, no training required — at the cost of relying on hand-tuned thresholds rather than learned normal behavior.
-- **On the demo data:** the broad first pass alone doesn't clear its threshold across the full leak period. The refined second pass, restricted to the leak's start day, correctly isolates the single building the leak was injected into — the two-pass design is what actually finds it.
 
 ## Setup
 
